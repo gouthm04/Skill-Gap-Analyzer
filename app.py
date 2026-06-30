@@ -143,10 +143,23 @@ def main():
             st.subheader("1. Your Resume")
             st.caption("Upload your current resume (PDF)")
             
-            in_tab1, in_tab2 = st.tabs(["Upload PDF", "Paste Text"])
+            if 'input_mode' not in st.session_state:
+                st.session_state.input_mode = 'pdf'
+                
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button("Upload PDF", type="primary" if st.session_state.input_mode == 'pdf' else "secondary", use_container_width=True):
+                    st.session_state.input_mode = 'pdf'
+                    st.rerun()
+            with b2:
+                if st.button("Paste Text", type="primary" if st.session_state.input_mode == 'text' else "secondary", use_container_width=True):
+                    st.session_state.input_mode = 'text'
+                    st.rerun()
             
             pdf_text = ""
-            with in_tab1:
+            pasted_text = ""
+            
+            if st.session_state.input_mode == 'pdf':
                 uploaded_file = st.file_uploader("", type=["pdf"], label_visibility="collapsed")
                 if uploaded_file is not None:
                     pdf_text = extract_text_from_pdf(uploaded_file)
@@ -158,7 +171,7 @@ def main():
                         pdf_text = ""
                     else:
                         st.success("PDF uploaded!")
-            with in_tab2:
+            else:
                 pasted_text = st.text_area("Paste your resume here", height=200, label_visibility="collapsed")
                 
             resume_text = pasted_text if pasted_text.strip() else pdf_text
@@ -179,7 +192,22 @@ def main():
     with c2:
         analyze_button = st.button("Analyze Resume & Generate My Career Plan", type="primary", use_container_width=True)
     
-    if not analyze_button:
+    if analyze_button:
+        if not resume_text.strip():
+            st.warning("Please provide your resume.")
+        elif not job_role.strip():
+            st.warning("Please enter the target job role.")
+        else:
+            with st.spinner("SkillBridge is analyzing your profile against the job requirements..."):
+                data = analyze_resume(resume_text, job_role, job_description)
+                
+            if "error" in data:
+                st.error(data["error"])
+            else:
+                st.session_state.analysis_data = data
+                st.session_state.show_dashboard = True
+                
+    if not st.session_state.get('show_dashboard', False):
         st.divider()
         st.subheader("What you'll get")
         
@@ -206,132 +234,134 @@ def main():
                 st.caption("AI-powered suggestions to make your resume stand out")
                 
     else:
-        if not resume_text.strip():
-            st.warning("Please provide your resume.")
-            return
-        if not job_role.strip():
-            st.warning("Please enter the target job role.")
-            return
+        data = st.session_state.analysis_data
+        st.divider()
+        st.header("Your SkillBridge Dashboard")
             
-        with st.spinner("SkillBridge is analyzing your profile against the job requirements..."):
-            data = analyze_resume(resume_text, job_role, job_description)
+        if 'dash_tab' not in st.session_state:
+            st.session_state.dash_tab = 'Overview & ATS'
             
-        if "error" in data:
-            st.error(data["error"])
-        else:
+        t1, t2, t3, t4 = st.columns(4)
+        with t1:
+            if st.button("Overview & ATS", type="primary" if st.session_state.dash_tab == 'Overview & ATS' else "secondary", use_container_width=True):
+                st.session_state.dash_tab = 'Overview & ATS'
+                st.rerun()
+        with t2:
+            if st.button("Learning Roadmap", type="primary" if st.session_state.dash_tab == 'Learning Roadmap' else "secondary", use_container_width=True):
+                st.session_state.dash_tab = 'Learning Roadmap'
+                st.rerun()
+        with t3:
+            if st.button("Portfolio Projects", type="primary" if st.session_state.dash_tab == 'Portfolio Projects' else "secondary", use_container_width=True):
+                st.session_state.dash_tab = 'Portfolio Projects'
+                st.rerun()
+        with t4:
+            if st.button("Resume Rewrites", type="primary" if st.session_state.dash_tab == 'Resume Rewrites' else "secondary", use_container_width=True):
+                st.session_state.dash_tab = 'Resume Rewrites'
+                st.rerun()
+        
+        # --- TAB 1: OVERVIEW & ATS ---
+        if st.session_state.dash_tab == 'Overview & ATS':
+            st.subheader("Executive Summary")
+            m1, m2, m3 = st.columns(3)
+            
+            with m1:
+                st.metric("Match Score", f"{data.get('match_score', 0)}%")
+                
+            with m2:
+                st.metric("ATS Score", f"{data.get('ats_score', 0)}/100")
+                
+            with m3:
+                st.metric("Hiring Probability", f"{data.get('hiring_probability', 0)}%")
+            
             st.divider()
-            st.header("Your SkillBridge Dashboard")
             
-            tab1, tab2, tab3, tab4 = st.tabs([
-                "Overview & ATS", 
-                "Learning Roadmap", 
-                "Portfolio Projects", 
-                "Resume Rewrites"
-            ])
+            col_sk1, col_sk2, col_ats = st.columns([1, 1, 1.2])
             
-            # --- TAB 1: OVERVIEW & ATS ---
-            with tab1:
-                st.subheader("Executive Summary")
-                m1, m2, m3 = st.columns(3)
-                
-                with m1:
-                    st.metric("Match Score", f"{data.get('match_score', 0)}%")
+            with col_sk1:
+                with st.container(border=True):
+                    matched = data.get("matched_skills", [])
+                    st.subheader(f"Matched Skills ({len(matched)})")
+                    if matched:
+                        # Using native progress 
+                        st.progress(1.0)
+                    for skill in matched:
+                        st.markdown(f"- {skill}")
                     
-                with m2:
-                    st.metric("ATS Score", f"{data.get('ats_score', 0)}/100")
+            with col_sk2:
+                with st.container(border=True):
+                    missing = data.get("missing_skills", [])
+                    st.subheader(f"Missing Skills ({len(missing)})")
+                    if missing:
+                        st.progress(0.4)
+                    for skill in missing:
+                        st.markdown(f"- {skill}")
                     
-                with m3:
-                    st.metric("Hiring Probability", f"{data.get('hiring_probability', 0)}%")
-                
-                st.divider()
-                
-                col_sk1, col_sk2, col_ats = st.columns([1, 1, 1.2])
-                
-                with col_sk1:
-                    with st.container(border=True):
-                        matched = data.get("matched_skills", [])
-                        st.subheader(f"Matched Skills ({len(matched)})")
-                        if matched:
-                            # Using native progress 
-                            st.progress(1.0)
-                        for skill in matched:
-                            st.markdown(f"- {skill}")
+            with col_ats:
+                with st.container(border=True):
+                    st.subheader("ATS Analysis")
+                    ats_data = data.get("ats_analysis", {})
+                    
+                    st.markdown("**Strengths:**")
+                    for s in ats_data.get("strengths", []):
+                        st.markdown(f"- ✓ {s}")
                         
-                with col_sk2:
-                    with st.container(border=True):
-                        missing = data.get("missing_skills", [])
-                        st.subheader(f"Missing Skills ({len(missing)})")
-                        if missing:
-                            st.progress(0.4)
-                        for skill in missing:
-                            st.markdown(f"- {skill}")
+                    st.markdown("**Missing Keywords:**")
+                    for kw in ats_data.get("missing_keywords", []):
+                        st.markdown(f"- ✗ {kw}")
                         
-                with col_ats:
-                    with st.container(border=True):
-                        st.subheader("ATS Analysis")
-                        ats_data = data.get("ats_analysis", {})
+                    st.markdown("**Formatting Issues:**")
+                    for issue in ats_data.get("formatting_issues", []):
+                        st.markdown(f"- ⚠ {issue}")
+                    
+        # --- TAB 2: LEARNING ROADMAP ---
+        if st.session_state.dash_tab == 'Learning Roadmap':
+            st.subheader("Personalized Learning Roadmap")
+            st.markdown("Your week-by-week action plan to bridge the skill gap.")
+            
+            for week in data.get("learning_roadmap", []):
+                with st.expander(f"{week.get('week', '')} - {week.get('topic', '')}", expanded=True):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown(f"**Estimated Time:** {week.get('estimated_hours', 'N/A')}")
+                    with col2:
+                        st.markdown(f"**Difficulty:** {week.get('difficulty', 'N/A')}")
                         
-                        st.markdown("**Strengths:**")
-                        for s in ats_data.get("strengths", []):
-                            st.markdown(f"- ✓ {s}")
-                            
-                        st.markdown("**Missing Keywords:**")
-                        for kw in ats_data.get("missing_keywords", []):
-                            st.markdown(f"- ✗ {kw}")
-                            
-                        st.markdown("**Formatting Issues:**")
-                        for issue in ats_data.get("formatting_issues", []):
-                            st.markdown(f"- ⚠ {issue}")
+                    st.markdown("**Resources:**")
+                    for res in week.get("resources", []):
+                        st.markdown(f"- {res}")
                         
-            # --- TAB 2: LEARNING ROADMAP ---
-            with tab2:
-                st.subheader("Personalized Learning Roadmap")
-                st.markdown("Your week-by-week action plan to bridge the skill gap.")
-                
-                for week in data.get("learning_roadmap", []):
-                    with st.expander(f"{week.get('week', '')} - {week.get('topic', '')}", expanded=True):
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown(f"**Estimated Time:** {week.get('estimated_hours', 'N/A')}")
-                        with col2:
-                            st.markdown(f"**Difficulty:** {week.get('difficulty', 'N/A')}")
-                            
-                        st.markdown("**Resources:**")
-                        for res in week.get("resources", []):
-                            st.markdown(f"- {res}")
-                            
-                        st.markdown(f"**Practice Task:**\n{week.get('practice_task', '')}")
-                        
-            # --- TAB 3: PROJECTS ---
-            with tab3:
-                st.subheader("Actionable Portfolio Projects")
-                st.markdown("Build these specific projects to cover your missing skills.")
-                
-                for proj in data.get("project_recommendations", []):
-                    with st.container(border=True):
-                        st.markdown(f"### {proj.get('name', 'Project')}")
-                        p1, p2, p3 = st.columns(3)
-                        with p1:
-                            st.markdown(f"**Difficulty:** {proj.get('difficulty', 'Unknown')}")
-                        with p2:
-                            tech_stack = ", ".join(proj.get("tech_stack", []))
-                            st.markdown(f"**Tech Stack:** {tech_stack}")
-                        with p3:
-                            st.markdown(f"**Build Time:** {proj.get('build_time', 'Unknown')}")
-                        
-                        st.markdown(f"*{proj.get('description', '')}*")
-                
-            # --- TAB 4: RESUME REWRITES ---
-            with tab4:
-                st.subheader("Resume Rewrites")
-                st.markdown("Enhance your bullet points to pass ATS systems.")
-                
-                for imp in data.get("resume_improvements", []):
-                    with st.container(border=True):
-                        st.markdown("**Current:**")
-                        st.code(imp.get('original', ''), language="text")
-                        st.markdown("**Improved:**")
-                        st.code(imp.get('suggested', ''), language="text")
+                    st.markdown(f"**Practice Task:**\n{week.get('practice_task', '')}")
+                    
+        # --- TAB 3: PROJECTS ---
+        if st.session_state.dash_tab == 'Portfolio Projects':
+            st.subheader("Actionable Portfolio Projects")
+            st.markdown("Build these specific projects to cover your missing skills.")
+            
+            for proj in data.get("project_recommendations", []):
+                with st.container(border=True):
+                    st.markdown(f"### {proj.get('name', 'Project')}")
+                    p1, p2, p3 = st.columns(3)
+                    with p1:
+                        st.markdown(f"**Difficulty:** {proj.get('difficulty', 'Unknown')}")
+                    with p2:
+                        tech_stack = ", ".join(proj.get("tech_stack", []))
+                        st.markdown(f"**Tech Stack:** {tech_stack}")
+                    with p3:
+                        st.markdown(f"**Build Time:** {proj.get('build_time', 'Unknown')}")
+                    
+                    st.markdown(f"*{proj.get('description', '')}*")
+            
+        # --- TAB 4: RESUME REWRITES ---
+        if st.session_state.dash_tab == 'Resume Rewrites':
+            st.subheader("Resume Rewrites")
+            st.markdown("Enhance your bullet points to pass ATS systems.")
+            
+            for imp in data.get("resume_improvements", []):
+                with st.container(border=True):
+                    st.markdown("**Current:**")
+                    st.code(imp.get('original', ''), language="text")
+                    st.markdown("**Improved:**")
+                    st.code(imp.get('suggested', ''), language="text")
 
 if __name__ == "__main__":
     main()
