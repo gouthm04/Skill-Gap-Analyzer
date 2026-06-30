@@ -14,9 +14,9 @@ This helps candidates understand their gaps and take concrete steps to improve t
 
 ## AI Tool Used
 
-**Google Gemini AI** (`gemini-1.5-flash`)
+**Groq AI** (`llama-3.1-8b-instant`)
 
-We use Google's Gemini AI model through the `google-generativeai` SDK. The AI performs:
+We use Groq AI through the `groq` SDK. The AI performs:
 - Semantic understanding of resume content
 - Intelligent skill extraction (technical and soft skills)
 - Role-specific skill requirement analysis
@@ -32,8 +32,8 @@ The AI goes beyond simple keyword matching by understanding context, implied ski
    - Enter target job role (e.g., "Machine Learning Engineer")
 
 2. **AI Processing**
-   - Resume and job role are sent to Google Gemini via API
-   - Gemini analyzes the resume using semantic understanding
+   - Resume and job role are sent to Groq AI via API
+   - The AI analyzes the resume using semantic understanding
    - AI extracts skills mentioned or implied in the resume
    - AI identifies expected skills for the target role
    - AI compares both and finds gaps
@@ -124,8 +124,8 @@ Long-term Development:
 |-----------|-----------|
 | **Language** | Python 3.8+ |
 | **UI Framework** | Streamlit |
-| **AI Model** | Google Gemini (gemini-1.5-flash) |
-| **AI SDK** | google-generativeai |
+| **AI Model** | Groq AI (llama-3.1-8b-instant) |
+| **AI SDK** | groq |
 | **Environment** | python-dotenv |
 | **Deployment** | Local (can be deployed to Streamlit Cloud) |
 
@@ -133,7 +133,7 @@ Long-term Development:
 
 ### Prerequisites
 - Python 3.8 or higher
-- Google Gemini API key
+- Groq API key
 
 ### Steps
 
@@ -151,7 +151,7 @@ Long-term Development:
    
    Create a `.env` file in the project root:
    ```
-   GEMINI_API_KEY=your_actual_api_key_here
+   GROQ_API_KEY=your_actual_api_key_here
    ```
 
 4. **Run the application**
@@ -197,7 +197,7 @@ AI_Resume_Gap_Analyzer/
 
 - Text-only input (no PDF upload)
 - No resume storage or history
-- Requires active internet connection for Gemini API
+- Requires active internet connection for Groq API
 - Analysis quality depends on resume detail and clarity
 
 ## Future Enhancements (Out of Scope for Day-1)
